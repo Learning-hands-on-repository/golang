@@ -57,8 +57,6 @@ func TestAdd(t *testing.T) {
 	})
 }
 
-func TestUpdate
-
 func assertStrings(t testing.TB, got, want string) {
 	t.Helper()
 
