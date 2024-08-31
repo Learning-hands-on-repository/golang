@@ -12,24 +12,45 @@ type Profile struct {
 	City string
 }
 
-func walk(x interface{}, fn func(input string)) {
+func getValue(x interface{}) reflect.Value {
 	val := reflect.ValueOf(x)
-	// field := val.Field(0)
-	// fn(field.String())
 
 	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
+	return val
+}
 
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
+func walk(x interface{}, fn func(input string)) {
+	val := getValue(x)
 
-		if field.Kind() == reflect.String {
-			fn(field.String())
+	walkValue := func(value reflect.Value) {
+		walk(value.Interface(), fn)
+	}
+
+	switch val.Kind() {
+	case reflect.String:
+		fn(val.String())
+	case reflect.Struct:
+		for i := 0; i < val.NumField(); i++ {
+			walkValue(val.Field(i))
 		}
-
-		if field.Kind() == reflect.Struct {
-			walk(field.Interface(), fn)
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < val.Len(); i++ {
+			walkValue(val.Index(i))
+		}
+	case reflect.Map:
+		for _, key := range val.MapKeys() {
+			walkValue(val.MapIndex(key))
+		}
+	case reflect.Chan:
+		for v, ok := val.Recv(); ok; v, ok = val.Recv() {
+			walkValue(v)
+		}
+	case reflect.Func:
+		valFnResult := val.Call(nil)
+		for _, res := range valFnResult {
+			walkValue(res)
 		}
 	}
 }
