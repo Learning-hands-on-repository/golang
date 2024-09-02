@@ -13,6 +13,6 @@ func (c *Counter) Inc() {
 	c.value++
 }
 
-func (c Counter) Value() int {
+func (c *Counter) Value() int {
 	return c.value
 }
