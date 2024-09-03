@@ -2,6 +2,7 @@ package context
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,10 +18,30 @@ func (s *SpyStore) Cancel() {
 	s.cancelled = true
 }
 
-// Fetch implements Store.
-func (s *SpyStore) Fetch() string {
-	time.Sleep(100 * time.Millisecond)
-	return s.response
+func (s *SpyStore) Fetch(ctx context.Context) (string, error) {
+	data := make(chan string, 1)
+
+	go func() {
+		var result string
+		for _, c := range s.response {
+			select {
+			case <-ctx.Done():
+				log.Println("spy store got cancelled")
+				return
+			default:
+				time.Sleep(10 * time.Millisecond)
+				result += string(c)
+			}
+		}
+		data <- result
+	}()
+
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case res := <-data:
+		return res, nil
+	}
 }
 
 func TestServer(t *testing.T) {
@@ -31,7 +52,7 @@ func TestServer(t *testing.T) {
 		store := &SpyStore{response: data}
 		svr := Server(store)
 		request := httptest.NewRequest(http.MethodGet, "/", nil)
-		response := httptest.NewRecorder()
+		response := httptest.NewRecorder() // How to get 'response' from fake calling http
 
 		// Act
 		svr.ServeHTTP(response, request)
