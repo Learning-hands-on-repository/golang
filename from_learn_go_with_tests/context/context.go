@@ -22,7 +22,13 @@ type Store interface {
 func Server(store Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Fprint(w, "fake response") // this will use 'fake response' as result of httpCall
-		data, _ := store.Fetch(r.Context())
+		data, err := store.Fetch(r.Context())
+
+		if err != nil {
+			// So when there is a cancellation, this will 'return'
+			return
+		}
+
 		fmt.Fprint(w, data) // this will use 'fake response' as result of httpCall
 	}
 	// NOTE: context has a method Done() which returns a channel which gets sent a signal when the context is "done" or "cancelled".
